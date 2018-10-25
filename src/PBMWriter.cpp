@@ -6,7 +6,7 @@
 #include <sstream>
 #include <vector>
 
-void pbm_writer::_convertRowToBitstream(const std::vector<bool>& row,
+void pbm_writer::_convertRowToBitstream(const GolRow_t& row,
                                         std::vector<uint8_t>& rBitstream)
 {
   auto div = static_cast<size_t>(row.size() / 8);
@@ -23,7 +23,7 @@ void pbm_writer::_convertRowToBitstream(const std::vector<bool>& row,
     {
       auto byteIdx = static_cast<size_t>(i / 8);
       // TRICKY: Write from left to right, meaning largest bit to smallest bit
-      auto bitIdx = 1 << ((8-1) - (i % 8));
+      auto bitIdx = 1 << ((8 - 1) - (i % 8));
       rBitstream[byteIdx] |= bitIdx;
     }
     ++i;
@@ -44,18 +44,19 @@ void pbm_writer::_convertBoardToBitstreams(
 void pbm_writer::writePBM(const std::string& outputDir, const GameOfLife& game)
 {
   std::vector<std::vector<uint8_t>> bitstreams;
-  pbm_writer::_convertBoardToBitstreams(*game.pState, bitstreams);
+  pbm_writer::_convertBoardToBitstreams(game.state, bitstreams);
   std::stringstream filenameSS;
   filenameSS << outputDir << "/";
   filenameSS << std::setfill('0')
-             << std::setw(static_cast<unsigned int>(std::log10(
-                  game.maxGeneration > game.pState->id ? game.maxGeneration
-                                                     : game.pState->id)+1))
-             << game.pState->id;
+             << std::setw(static_cast<unsigned int>(
+                  std::log10(game.rules.maxGeneration > game.state.id
+                               ? game.rules.maxGeneration
+                               : game.state.id) +
+                  1))
+             << game.state.id;
   filenameSS << ".pbm";
   std::stringstream outputSS;
-  outputSS << "P4 " << game.parameters.x << " " << game.parameters.y
-           << std::endl;
+  outputSS << "P4 " << game.state.x << " " << game.state.y << std::endl;
   for (auto&& bitstream : bitstreams)
   {
     outputSS.write((const char*)&bitstream[0], bitstream.size());

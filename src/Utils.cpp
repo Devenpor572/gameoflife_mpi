@@ -2,15 +2,20 @@
 
 #include <fstream>
 
-GameOfLifeState::GameOfLifeState(unsigned int id,
-                                 const GameOfLifeParameters& parameters)
-  : id(id)
+void GameOfLifeState::initialize(unsigned int x, unsigned int y)
+{
+  this->x = x;
+  this->y = y;
+  _initializeBoard();
+}
+
+void GameOfLifeState::_initializeBoard()
 {
   board.resize(0);
-  board.reserve(parameters.y);
-  for (size_t i = 0; i < parameters.y; ++i)
+  board.reserve(y);
+  for (size_t i = 0; i < y; ++i)
   {
-    board.push_back(std::vector<bool>(parameters.x, false));
+    board.push_back(GolRow_t(x, false));
   }
 }
 

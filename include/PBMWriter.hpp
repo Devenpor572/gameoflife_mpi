@@ -5,7 +5,7 @@
 
 namespace pbm_writer
 {
-  void _convertRowToBitstream(const std::vector<bool>& row,
+  void _convertRowToBitstream(const GolRow_t& row,
                               std::vector<uint8_t>& rBitstream);
 
   void _convertBoardToBitstreams(

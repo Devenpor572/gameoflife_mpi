@@ -2,28 +2,27 @@
 #include "RLEParser.hpp"
 #include "Utils.hpp"
 
-#include <mpi.h>
+//#include <mpi.h>
 
 #include <cctype>
-#include <cerrno> 
+#include <cerrno>
 #include <iostream>
 #include <locale>
 
 // Output includes
-#include <sstream>
 #include <chrono>
+#include <sstream>
 #include <thread>
 
-void incrementCellNeighbors(
-  size_t col,
-  size_t row,
-  std::vector<std::vector<uint8_t>>& neighborCounts)
+void incrementCellNeighbors(size_t col,
+                            size_t row,
+                            std::vector<std::vector<uint8_t>>& neighborCounts)
 {
   size_t minCol = col - 1;
   size_t maxCol = col + 1;
   size_t minRow = row - 1;
   size_t maxRow = row + 1;
-  // Increment the cells around 
+  // Increment the cells around
   for (size_t i = minCol; i <= maxCol; ++i)
   {
     neighborCounts[minRow][i]++;
@@ -33,13 +32,12 @@ void incrementCellNeighbors(
   neighborCounts[row][maxCol]++;
 }
 
-void incrementNeighbors(const GameOfLifeParameters& parameters,
-                             const GameOfLifeState& state,
-                             std::vector<std::vector<uint8_t>>& neighborCounts)
+void incrementNeighbors(const GameOfLifeState& state,
+                        std::vector<std::vector<uint8_t>>& neighborCounts)
 {
-  for (size_t j = 0; j < parameters.y; ++j)
+  for (size_t j = 0; j < state.y; ++j)
   {
-    for (size_t i = 0; i < parameters.x; ++i)
+    for (size_t i = 0; i < state.x; ++i)
     {
       if (state.board[j][i])
       {
@@ -50,54 +48,50 @@ void incrementNeighbors(const GameOfLifeParameters& parameters,
   }
 }
 
-void populateNextState(
-  const GameOfLifeParameters& parameters,
-  const std::vector<std::vector<uint8_t>>& neighborCounts,
-  GameOfLifeState& state)
+void populateNextState(const GameOfLifeRules& rules,
+                       const std::vector<std::vector<uint8_t>>& neighborCounts,
+                       GameOfLifeState& state)
 {
-  for (size_t j = 0; j < parameters.y; ++j)
+  for (size_t j = 0; j < state.y; ++j)
   {
-    for (size_t i = 0; i < parameters.x; ++i)
+    for (size_t i = 0; i < state.x; ++i)
     {
       // Cell is alive
       if (state.board[j][i])
       {
         // Does the new cell survive?
-        state.board[j][i] =
-          parameters.rules.survive[neighborCounts[j + 1][i + 1]];
+        state.board[j][i] = rules.survive[neighborCounts[j + 1][i + 1]];
       }
       // Cell is dead
       else
       {
         // Is a new cell born?
-        state.board[j][i] =
-          parameters.rules.birth[neighborCounts[j + 1][i + 1]];
+        state.board[j][i] = rules.birth[neighborCounts[j + 1][i + 1]];
       }
     }
   }
 }
 
-void computeGeneration(const GameOfLifeParameters& parameters,
-                            GameOfLifeState& state)
+void computeGeneration(const GameOfLifeRules& rules, GameOfLifeState& state)
 {
   std::vector<std::vector<uint8_t>> neighborCounts;
   // We want a buffer row on each side
-  neighborCounts.reserve(parameters.y + 2);
-  for (size_t i = 0; i < parameters.y + 2; ++i)
+  neighborCounts.reserve(state.y + 2);
+  for (size_t i = 0; i < state.y + 2; ++i)
   {
-    neighborCounts.push_back(std::vector<uint8_t>(parameters.x + 2, 0));
+    neighborCounts.push_back(std::vector<uint8_t>(state.x + 2, 0));
   }
-  incrementNeighbors(parameters, state, neighborCounts);
-  populateNextState(parameters, neighborCounts, state);
+  incrementNeighbors(state, neighborCounts);
+  populateNextState(rules, neighborCounts, state);
   state.id++;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
-  MPI_Init(&argc, &argv);
-  int rank, size;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
-  MPI_Comm_size(MPI_COMM_WORLD, &size); 
+  // MPI_Init(&argc, &argv);
+  int rank = 0; //, size;
+  // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // MPI_Comm_size(MPI_COMM_WORLD, &size);
   if (argc != 3 && argc != 7)
   {
     std::cerr << "Invalid parameters" << std::endl;
@@ -109,36 +103,37 @@ int main(int argc, char **argv)
   if (rank == 0)
   {
     std::string inputFile = argv[1];
-    std::string outputDir = argv[2];
-    game.maxGeneration = 1000;
-    game.parameters.x = 1024;
-    game.parameters.y = 1024;
+    outputDir = argv[2];
+    unsigned int maxGeneration = 1000;
+    unsigned int x = 1024;
+    unsigned int y = 1024;
+    partitionSize = 16;
     if (argc == 7)
     {
-      game.maxGeneration = std::stoul(argv[3]);
-      game.parameters.x = std::stoul(argv[4]);
-      game.parameters.y = std::stoul(argv[5]);
+      maxGeneration = std::stoul(argv[3]);
+      x = std::stoul(argv[4]);
+      y = std::stoul(argv[5]);
       partitionSize = std::stoul(argv[6]);
     }
-    if (!parser::parseRLE(inputFile, game))
+    if (!parser::parseRLE(inputFile, maxGeneration, x, y, game))
     {
       std::cerr << "Failed to parse RLE file!" << std::endl;
       return EXIT_FAILURE;
     }
-   
   }
   // TODO Swap parameters
   if (rank == 0)
   {
     pbm_writer::writePBM(outputDir, game);
-    for (unsigned int i = 1; i <= game.maxGeneration; ++i)
+    for (unsigned int i = 1; i <= game.rules.maxGeneration; ++i)
     {
-      computeGeneration(game.parameters, *game.pState);
+      computeGeneration(game.rules, game.state);
       pbm_writer::writePBM(outputDir, game);
     }
   }
-  
-  MPI_Finalize();
+
+  // MPI_Finalize();
+  std::cout << "Press any key to continue..." << std::endl;
   std::cin.get();
   return EXIT_SUCCESS;
 }

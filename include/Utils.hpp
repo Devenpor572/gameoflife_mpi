@@ -4,8 +4,13 @@
 #include <memory>
 #include <vector>
 
+typedef std::vector<bool> GolRow_t;
+/** std::vector<std::vector<bool>> **/
+typedef std::vector<GolRow_t> GolBoard_t;
+
 struct GameOfLifeRules
 {
+  unsigned int maxGeneration;
   // 8 neighbors + null case
   std::array<bool, 9> birth{
     {false, false, false, true, false, false, false, false, false}};
@@ -13,19 +18,15 @@ struct GameOfLifeRules
     {false, false, true, true, false, false, false, false, false}};
 };
 
-struct GameOfLifeParameters
-{
-  unsigned int x;
-  unsigned int y;
-  GameOfLifeRules rules;
-};
-
 struct GameOfLifeState
 {
-  explicit GameOfLifeState(unsigned int id,
-                           const GameOfLifeParameters& parameters);
   unsigned int id;
-  std::vector<std::vector<bool>> board;
+  unsigned int x;
+  unsigned int y;
+  GolBoard_t board;
+
+  void initialize(unsigned int x, unsigned int y);
+  void _initializeBoard();
 };
 
 struct GameOfLife
@@ -35,9 +36,8 @@ struct GameOfLife
   std::vector<std::string> comments;
   std::string cornerString;
   std::string rulestring;
-  unsigned int maxGeneration;
-  GameOfLifeParameters parameters;
-  std::shared_ptr<GameOfLifeState> pState;
+  GameOfLifeRules rules;
+  GameOfLifeState state;
 };
 
 namespace utils
