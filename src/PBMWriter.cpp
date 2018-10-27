@@ -41,22 +41,23 @@ void pbm_writer::_convertBoardToBitstreams(
   }
 }
 
-void pbm_writer::writePBM(const std::string& outputDir, const GameOfLife& game)
+void pbm_writer::writePBM(const std::string& outputDir,
+                          const unsigned int maxGeneration,
+                          const GameOfLifeState& state)
 {
   std::vector<std::vector<uint8_t>> bitstreams;
-  pbm_writer::_convertBoardToBitstreams(game.state, bitstreams);
+  pbm_writer::_convertBoardToBitstreams(state, bitstreams);
   std::stringstream filenameSS;
   filenameSS << outputDir << "/";
   filenameSS << std::setfill('0')
              << std::setw(static_cast<unsigned int>(
-                  std::log10(game.rules.maxGeneration > game.state.id
-                               ? game.rules.maxGeneration
-                               : game.state.id) +
+                  std::log10(maxGeneration > state.id ? maxGeneration
+                                                      : state.id) +
                   1))
-             << game.state.id;
+             << state.id;
   filenameSS << ".pbm";
   std::stringstream outputSS;
-  outputSS << "P4 " << game.state.x << " " << game.state.y << std::endl;
+  outputSS << "P4 " << state.dims.x << " " << state.dims.y << std::endl;
   for (auto&& bitstream : bitstreams)
   {
     outputSS.write((const char*)&bitstream[0], bitstream.size());

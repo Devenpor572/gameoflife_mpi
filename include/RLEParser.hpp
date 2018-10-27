@@ -10,8 +10,7 @@ namespace parser
   void _parseRuleString(std::string ruleString, GameOfLifeRules& rRules);
 
   void _parseHeader(std::string header,
-                    const unsigned int maxX,
-                    const unsigned int maxY,
+                    const BoardDimensions& maxDims,
                     GameOfLifeState& rState,
                     GameOfLifeRules& rRules);
 
@@ -24,9 +23,5 @@ namespace parser
   bool _placeStateOnBoard(const GameOfLifeState& referenceState,
                           GameOfLifeState& rTargetState);
 
-  bool parseRLE(std::string filename,
-                unsigned int maxGeneration,
-                unsigned int x,
-                unsigned int y,
-                GameOfLife& rGame);
+  bool parseRLE(std::string filename, BoardDimensions dims, GameOfLife& rGame);
 }

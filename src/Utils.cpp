@@ -2,21 +2,27 @@
 
 #include <fstream>
 
-void GameOfLifeState::initialize(unsigned int x, unsigned int y)
+void GameOfLifeState::initialize(const BoardDimensions& dims)
 {
-  this->x = x;
-  this->y = y;
+  this->dims = dims;
   _initializeBoard();
 }
 
 void GameOfLifeState::_initializeBoard()
 {
   board.resize(0);
-  board.reserve(y);
-  for (size_t i = 0; i < y; ++i)
+  board.reserve(dims.y);
+  for (size_t i = 0; i < dims.y; ++i)
   {
-    board.push_back(GolRow_t(x, false));
+    board.push_back(GolRow_t(dims.x, false));
   }
+}
+
+void PartitionState::initialize(const BoardDimensions& dims)
+{
+  GameOfLifeState::initialize(dims);
+  lowerBuffer = GolRow_t(dims.x, false);
+  upperBuffer = GolRow_t(dims.x, false);
 }
 
 std::string utils::readFile(std::string filename)

@@ -50,6 +50,7 @@ void parser::_parseRuleString(std::string ruleString, GameOfLifeRules& rRules)
 {
   const std::regex BS_RE(R"(B\d+/S\d+)");
   const std::regex SB_RE(R"(\d+/\d+)");
+  GameOfLifeRules rules;
   std::istringstream ruleStringSS(ruleString);
   bool firstParse = true;
   for (std::string ruleStringElement;
@@ -64,13 +65,13 @@ void parser::_parseRuleString(std::string ruleString, GameOfLifeRules& rRules)
       case 'B':
         for (char ch : ruleStringElement)
         {
-          rRules.birth[std::stoi(&ch)] = true;
+          rules.birth[std::stoi(&ch)] = true;
         }
         break;
       case 'S':
         for (char ch : ruleStringElement)
         {
-          rRules.survive[std::stoi(&ch)] = true;
+          rules.survive[std::stoi(&ch)] = true;
         }
         break;
       default:
@@ -83,7 +84,7 @@ void parser::_parseRuleString(std::string ruleString, GameOfLifeRules& rRules)
       {
         for (char ch : ruleStringElement)
         {
-          rRules.survive[std::stoi(&ch)] = true;
+          rules.survive[std::stoi(&ch)] = true;
         }
         firstParse = false;
       }
@@ -91,12 +92,12 @@ void parser::_parseRuleString(std::string ruleString, GameOfLifeRules& rRules)
       {
         for (char ch : ruleStringElement)
         {
-          rRules.birth[std::stoi(&ch)] = true;
+          rules.birth[std::stoi(&ch)] = true;
         }
       }
     }
   }
-  if (rRules.birth.size() == 0 || rRules.survive.size() == 0)
+  if (rules.birth.size() == 0 || rules.survive.size() == 0)
   {
     // Initialize to Conway's Game of Life
     rRules.birth = std::array<bool, 9>{
@@ -104,11 +105,11 @@ void parser::_parseRuleString(std::string ruleString, GameOfLifeRules& rRules)
     rRules.survive = std::array<bool, 9>{
       {false, false, true, true, false, false, false, false, false}};
   }
+  rRules = rules;
 }
 
 void parser::_parseHeader(std::string header,
-                          const unsigned int maxX,
-                          const unsigned int maxY,
+                          const BoardDimensions& maxDims,
                           GameOfLifeState& rState,
                           GameOfLifeRules& rRules)
 {
@@ -116,7 +117,7 @@ void parser::_parseHeader(std::string header,
   header.erase(std::remove(header.begin(), header.end(), ' '), header.end());
 
   std::istringstream headerSS(header);
-  unsigned int x, y;
+  BoardDimensions dims;
   for (std::string headerRule; std::getline(headerSS, headerRule, ',');)
   {
     std::istringstream headerRuleSS(headerRule);
@@ -126,8 +127,8 @@ void parser::_parseHeader(std::string header,
     {
       if (lastToken == "x")
       {
-        x = std::stoul(headerRuleElement);
-        if (x > maxX)
+        dims.x = std::stoul(headerRuleElement);
+        if (dims.x > maxDims.x)
         {
           std::cerr << "Pattern width greater than max board width!"
                     << std::endl;
@@ -135,8 +136,8 @@ void parser::_parseHeader(std::string header,
       }
       else if (lastToken == "y")
       {
-        y = std::stoul(headerRuleElement);
-        if (y > maxY)
+        dims.y = std::stoul(headerRuleElement);
+        if (dims.y > maxDims.y)
         {
           std::cerr << "Pattern height greater than max board height!"
                     << std::endl;
@@ -149,7 +150,7 @@ void parser::_parseHeader(std::string header,
       lastToken = headerRuleElement;
     }
   }
-  rState.initialize(x, y);
+  rState.initialize(dims);
 }
 
 void parser::_parseBoard(std::string boardStr,
@@ -219,17 +220,17 @@ bool parser::_placeStateOnBoard(const GameOfLifeState& referenceState,
 {
   unsigned int x, y;
   // Top-left corner
-  if (referenceState.x <= rTargetState.x)
+  if (referenceState.dims.x <= rTargetState.dims.x)
   {
-    x = (rTargetState.x - referenceState.x) / 2;
+    x = (rTargetState.dims.x - referenceState.dims.x) / 2;
   }
   else
   {
     return false;
   }
-  if (referenceState.y <= rTargetState.y)
+  if (referenceState.dims.y <= rTargetState.dims.y)
   {
-    y = (rTargetState.y - referenceState.y) / 2;
+    y = (rTargetState.dims.y - referenceState.dims.y) / 2;
   }
   else
   {
@@ -245,15 +246,12 @@ bool parser::_placeStateOnBoard(const GameOfLifeState& referenceState,
 }
 
 bool parser::parseRLE(std::string filename,
-                      unsigned int maxGeneration,
-                      unsigned int x,
-                      unsigned int y,
+                      BoardDimensions dims,
                       GameOfLife& rGame)
 {
   GameOfLife game;
-  game.rules.maxGeneration = maxGeneration;
   game.state.id = 0;
-  game.state.initialize(x, y);
+  game.state.initialize(dims);
   GameOfLifeState tempState;
   const std::regex COMMENT_RE(R"(#[CcNOPRr] .*)");
   const std::regex HEADER_RE(
@@ -282,7 +280,7 @@ bool parser::parseRLE(std::string filename,
              (lastStage == ParseStage::NONE ||
               lastStage == ParseStage::COMMENT))
     {
-      _parseHeader(line, game.state.x, game.state.y, tempState, game.rules);
+      _parseHeader(line, game.state.dims, tempState, game.rules);
       lastStage = ParseStage::HEADER;
     }
     else if (std::regex_match(line, NONTERMINAL_BODY_RE) &&

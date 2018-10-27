@@ -12,5 +12,7 @@ namespace pbm_writer
     const GameOfLifeState& state,
     std::vector<std::vector<uint8_t>>& rBitstreams);
 
-  void writePBM(const std::string& outputDir, const GameOfLife& game);
+  void writePBM(const std::string& outputDir,
+                const unsigned int maxGeneration,
+                const GameOfLifeState& state);
 }
